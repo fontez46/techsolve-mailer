@@ -1,19 +1,20 @@
 /**
  * TechSolve Pro — Mailer API
- * Hosted on Render.com | Uses Resend HTTPS API (no SMTP, never blocked)
+ * Hosted on Render.com | Uses Brevo (Sendinblue) HTTPS API — no SMTP, never blocked
+ * Free tier: 300 emails/day
  */
 
 require('dotenv').config();
 const express = require('express');
-const { Resend } = require('resend');
+const axios   = require('axios');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Resend client ────────────────────────────────────────────────────────────
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ── Brevo API base ────────────────────────────────────────────────────────────
+const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
 
-// ── CORS ─────────────────────────────────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
     'https://techsolvepro.kesug.com',
     'http://techsolvepro.kesug.com',
@@ -27,7 +28,7 @@ app.use(function (req, res, next) {
     if (!origin || allowedOrigins.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin || '*');
     }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
@@ -36,7 +37,30 @@ app.use(function (req, res, next) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Brevo send helper ─────────────────────────────────────────────────────────
+async function sendBrevoEmail({ to, subject, html, replyTo }) {
+    const fromName  = process.env.FROM_NAME  || 'TechSolve Pro';
+    const fromEmail = process.env.FROM_EMAIL || process.env.BREVO_SENDER_EMAIL;
+
+    const payload = {
+        sender:      { name: fromName, email: fromEmail },
+        to:          [{ email: to }],
+        subject,
+        htmlContent: html
+    };
+
+    if (replyTo) payload.replyTo = { email: replyTo };
+
+    await axios.post(BREVO_API, payload, {
+        headers: {
+            'api-key':      process.env.BREVO_API_KEY,
+            'Content-Type': 'application/json',
+            'Accept':       'application/json'
+        }
+    });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const SERVICE_LABELS = {
     maintenance: 'IT Maintenance & Support',
     design:      'Website Design',
@@ -71,7 +95,7 @@ function row(label, value, shaded = false) {
     </tr>`;
 }
 
-// ── Email templates ──────────────────────────────────────────────────────────
+// ── Email templates ───────────────────────────────────────────────────────────
 function adminEmailHTML(d) {
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#0a0e1a;font-family:Arial,sans-serif;">
@@ -79,7 +103,7 @@ function adminEmailHTML(d) {
   <tr><td align="center" style="padding:32px 16px;">
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
       <tr><td style="background:linear-gradient(135deg,#e63946,#f5a623);padding:28px 32px;border-radius:12px 12px 0 0;">
-        <h1 style="margin:0;color:#fff;font-size:1.4rem;">🔔 New Contact Request</h1>
+        <h1 style="margin:0;color:#fff;font-size:1.4rem;">&#128276; New Contact Request</h1>
         <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:0.9rem;">Reference #${d.refId}</p>
       </td></tr>
       <tr><td style="background:#111827;padding:32px;border-radius:0 0 12px 12px;">
@@ -116,7 +140,7 @@ function clientEmailHTML(d) {
         <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:0.9rem;">Professional IT Solutions</p>
       </td></tr>
       <tr><td style="background:#111827;padding:36px 32px;border-radius:0 0 12px 12px;">
-        <h2 style="margin:0 0 16px;color:#e2e8f0;font-size:1.3rem;">Thank you, ${escHtml(d.name)}! 🎉</h2>
+        <h2 style="margin:0 0 16px;color:#e2e8f0;font-size:1.3rem;">Thank you, ${escHtml(d.name)}!</h2>
         <p style="margin:0 0 16px;color:#94a3b8;line-height:1.8;">
           We have received your enquiry regarding
           <strong style="color:#f5a623;">${serviceLabel(d.service)}</strong>
@@ -135,12 +159,12 @@ function clientEmailHTML(d) {
         </div>
         <p style="text-align:center;margin:0 0 24px;">
           <a href="https://wa.me/254704003130" style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg,#e63946,#f5a623);color:#fff;text-decoration:none;border-radius:50px;font-weight:700;font-size:0.9rem;">
-            💬 WhatsApp Us
+            &#128172; WhatsApp Us
           </a>
         </p>
         <hr style="border:none;border-top:1px solid #1e293b;margin:0 0 20px;">
         <p style="margin:0;color:#64748b;font-size:0.8rem;text-align:center;">
-          © ${new Date().getFullYear()} TechSolve Pro &bull; Kahawa, Nairobi, Kenya &bull;
+          &copy; ${new Date().getFullYear()} TechSolve Pro &bull; Kahawa, Nairobi, Kenya &bull;
           <a href="tel:+254704003130" style="color:#e63946;text-decoration:none;">+254 70 400 3130</a>
         </p>
       </td></tr>
@@ -150,9 +174,22 @@ function clientEmailHTML(d) {
 </body></html>`;
 }
 
-// ── Health check ─────────────────────────────────────────────────────────────
+// ── Health / keep-alive endpoints ─────────────────────────────────────────────
 app.get('/', (req, res) => {
     res.json({ status: 'TechSolve Pro Mailer API is running ✅' });
+});
+
+// UptimeRobot monitors this URL every 14 min to prevent Render sleeping
+app.get('/ping', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: Math.floor(process.uptime()) + 's',
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', service: 'TechSolve Pro Mailer API', version: '2.0.0' });
 });
 
 // ── Contact endpoint ──────────────────────────────────────────────────────────
@@ -173,28 +210,26 @@ app.post('/api/contact', async (req, res) => {
         }
 
         const refId = genRefId();
-        const ADMIN = process.env.ADMIN_EMAIL;
-        // Resend requires a verified "from" domain.
-        // Until your domain is verified use their free sandbox address.
-        const FROM  = process.env.FROM_EMAIL || 'TechSolve Pro <onboarding@resend.dev>';
+        const d = {
+            name: name.trim(), email: email.trim(),
+            phone: (phone||'').trim(), company: (company||'').trim(),
+            service, urgency: urgency || 'medium',
+            message: message.trim(), refId
+        };
 
-        const d = { name: name.trim(), email: email.trim(), phone: (phone||'').trim(),
-                    company: (company||'').trim(), service, urgency: urgency||'medium',
-                    message: message.trim(), refId };
+        const ADMIN = process.env.ADMIN_EMAIL;
 
         // 1. Admin notification
-        await resend.emails.send({
-            from:     FROM,
-            to:       [ADMIN],
-            replyTo:  email,
-            subject:  `New Contact: ${serviceLabel(service)} — ${name.trim()}`,
-            html:     adminEmailHTML(d)
+        await sendBrevoEmail({
+            to:      ADMIN,
+            subject: `New Contact: ${serviceLabel(service)} — ${name.trim()}`,
+            html:    adminEmailHTML(d),
+            replyTo: email
         });
 
         // 2. Client confirmation
-        await resend.emails.send({
-            from:    FROM,
-            to:      [email],
+        await sendBrevoEmail({
+            to:      email,
             subject: `We received your enquiry — TechSolve Pro (Ref #${refId})`,
             html:    clientEmailHTML(d)
         });
@@ -202,7 +237,8 @@ app.post('/api/contact', async (req, res) => {
         return res.json({ success: true, message: 'Message sent successfully!', refId });
 
     } catch (err) {
-        console.error('Mailer error:', err);
+        const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+        console.error('Brevo error:', detail);
         return res.status(500).json({
             success: false,
             message: 'Email sending failed. Please try again or contact us directly.'
@@ -210,23 +246,4 @@ app.post('/api/contact', async (req, res) => {
     }
 });
 
-// ── Keep-alive endpoints (ping by UptimeRobot every 14 min) ──────────────────
-// UptimeRobot URL to monitor: https://techsolve-mailer.onrender.com/ping
-app.get('/ping', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        uptime: Math.floor(process.uptime()) + 's',
-        timestamp: new Date().toISOString()
-    });
-});
-
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'healthy',
-        service: 'TechSolve Pro Mailer API',
-        version: '1.0.0'
-    });
-});
-
-app.listen(PORT, () => console.log(`🚀 Mailer API running on port ${PORT}`));
-
+app.listen(PORT, () => console.log(`🚀 TechSolve Mailer API (Brevo) running on port ${PORT}`));
