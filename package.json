@@ -1,7 +1,7 @@
 {
   "name": "techsolve-mailer-api",
   "version": "1.0.0",
-  "description": "TechSolve Pro — Gmail SMTP mailer API (hosted on Render)",
+  "description": "TechSolve Pro — Mailer API using Resend HTTPS (hosted on Render)",
   "main": "server.js",
   "engines": {
     "node": ">=18"
@@ -11,10 +11,9 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "nodemailer": "^6.9.13"
+    "resend": "^4.5.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
