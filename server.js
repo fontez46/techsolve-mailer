@@ -210,4 +210,23 @@ app.post('/api/contact', async (req, res) => {
     }
 });
 
+// ── Keep-alive endpoints (ping by UptimeRobot every 14 min) ──────────────────
+// UptimeRobot URL to monitor: https://techsolve-mailer.onrender.com/ping
+app.get('/ping', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: Math.floor(process.uptime()) + 's',
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'healthy',
+        service: 'TechSolve Pro Mailer API',
+        version: '1.0.0'
+    });
+});
+
 app.listen(PORT, () => console.log(`🚀 Mailer API running on port ${PORT}`));
+
