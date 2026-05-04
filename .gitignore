@@ -1,0 +1,4 @@
+# .gitignore for render-api
+node_modules/
+.env
+*.log
