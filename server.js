@@ -1,7 +1,8 @@
 /**
- * TechSolve Pro — Mailer API
- * Hosted on Render.com | Uses Brevo (Sendinblue) HTTPS API — no SMTP, never blocked
+ * TechSolve Pro — Mailer API v2.0 (Brevo)
+ * Hosted on Render.com | Uses Brevo HTTPS API — no SMTP, never blocked
  * Free tier: 300 emails/day
+ * Build: 2026-05-05
  */
 
 require('dotenv').config();
