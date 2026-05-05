@@ -16,20 +16,11 @@ const PORT = process.env.PORT || 3000;
 const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
+// Public contact form API — no credentials, safe to allow all origins
 app.use(function (req, res, next) {
-    const origin = req.headers.origin || '';
-    const allowed =
-        !origin ||                                    // server-to-server / curl
-        origin.includes('kesug.com') ||               // all InfinityFree subdomains
-        origin.includes('techsolvepro') ||            // any techsolvepro domain
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin); // any localhost port
-
-    if (allowed) {
-        res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Access-Control-Allow-Credentials', 'false');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
 });
