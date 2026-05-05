@@ -16,21 +16,20 @@ const PORT = process.env.PORT || 3000;
 const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-    'https://techsolvepro.kesug.com',
-    'http://techsolvepro.kesug.com',
-    'http://localhost',
-    'http://127.0.0.1',
-    'http://localhost:3000'
-];
-
 app.use(function (req, res, next) {
-    const origin = req.headers.origin;
-    if (!origin || allowedOrigins.includes(origin)) {
+    const origin = req.headers.origin || '';
+    const allowed =
+        !origin ||                                    // server-to-server / curl
+        origin.includes('kesug.com') ||               // all InfinityFree subdomains
+        origin.includes('techsolvepro') ||            // any techsolvepro domain
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin); // any localhost port
+
+    if (allowed) {
         res.setHeader('Access-Control-Allow-Origin', origin || '*');
     }
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Credentials', 'false');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
 });
@@ -242,7 +241,8 @@ app.post('/api/contact', async (req, res) => {
         console.error('Brevo error:', detail);
         return res.status(500).json({
             success: false,
-            message: 'Email sending failed. Please try again or contact us directly.'
+            message: 'Email sending failed. Please try again or contact us directly.',
+            error: detail
         });
     }
 });
